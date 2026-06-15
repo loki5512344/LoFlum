@@ -89,6 +89,7 @@ impl FileManagerApp {
                         self.state.onboarding_host.clear();
                         self.state.onboarding_user.clear();
                         self.state.onboarding_pass.clear();
+                        self.state.onboarding_port.clear();
                     }
                     Err(e) => {
                         self.state.status_message = format!("Connection failed: {}", e);
@@ -224,46 +225,53 @@ impl eframe::App for FileManagerApp {
                             ui.label("Connect to a server");
                             ui.add_space(12.0);
 
-                            ui.horizontal(|ui| {
-                                ui.label("Host:");
-                                ui.add(
-                                    egui::TextEdit::singleline(&mut self.state.onboarding_host)
-                                        .id("onb_host".into())
-                                        .desired_width(200.0)
-                                        .hint_text("hostname"),
-                                );
-                            });
+            ui.horizontal(|ui| {
+                ui.label("Host:");
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.state.onboarding_host)
+                        .id("onb_host".into())
+                        .desired_width(150.0)
+                        .hint_text("hostname"),
+                );
+                ui.label("Port:");
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.state.onboarding_port)
+                        .id("onb_port".into())
+                        .desired_width(60.0)
+                        .hint_text("22"),
+                );
+            });
 
-                            ui.horizontal(|ui| {
-                                ui.label("User:");
-                                ui.add(
-                                    egui::TextEdit::singleline(&mut self.state.onboarding_user)
-                                        .id("onb_user".into())
-                                        .desired_width(200.0)
-                                        .hint_text("username"),
-                                );
-                            });
+            ui.horizontal(|ui| {
+                ui.label("User:");
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.state.onboarding_user)
+                        .id("onb_user".into())
+                        .desired_width(200.0)
+                        .hint_text("username"),
+                );
+            });
 
-                            ui.horizontal(|ui| {
-                                ui.label("Pass:");
-                                ui.add(
-                                    egui::TextEdit::singleline(&mut self.state.onboarding_pass)
-                                        .password(true)
-                                        .id("onb_pass".into())
-                                        .desired_width(200.0)
-                                        .hint_text("password"),
-                                );
-                            });
+            ui.horizontal(|ui| {
+                ui.label("Pass:");
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.state.onboarding_pass)
+                        .password(true)
+                        .id("onb_pass".into())
+                        .desired_width(200.0)
+                        .hint_text("password"),
+                );
+            });
 
-                            ui.add_space(12.0);
-                            let conn_btn = egui::Button::new("Connect")
-                                .fill(ACCENT)
+            ui.add_space(12.0);
+            let conn_btn = egui::Button::new("Connect")
+                .fill(ACCENT)
                                 .min_size(egui::vec2(200.0, 32.0));
                             if ui.add(conn_btn).clicked() {
                                 self.state.connect_host = self.state.onboarding_host.clone();
                                 self.state.connect_user = self.state.onboarding_user.clone();
                                 self.state.connect_pass = self.state.onboarding_pass.clone();
-                                self.state.connect_port = "22".into();
+                                self.state.connect_port = self.state.onboarding_port.clone();
                                 self.state.connect_protocol = 0;
                                 self.state.show_connect_dialog = true;
                             }
