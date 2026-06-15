@@ -58,7 +58,6 @@ pub fn render(ui: &mut egui::Ui, _state: &mut AppState, tasks: &[TransferTask]) 
                             let pct = task.progress_pct();
                             let pb = egui::ProgressBar::new(pct as f32 / 100.0)
                                 .text(format!("{:.1}%", pct))
-                                .fill(egui::Color32::from_rgb(100, 80, 220))
                                 .desired_width(ui.available_width() * 0.6);
                             ui.add(pb);
 

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use egui::{CentralPanel, TopBottomPanel};
+use egui::{CentralPanel, Style, TopBottomPanel, Visuals};
 
 use crate::domain::connection::ConnectionStatus;
 use crate::domain::file_entry::{EntryKind, FileEntry};
@@ -14,8 +14,6 @@ use crate::ui::panels::remote_pane;
 use crate::ui::panels::status_bar;
 use crate::ui::panels::tabs;
 use crate::ui::panels::toolbar;
-
-const ACCENT: egui::Color32 = egui::Color32::from_rgb(100, 80, 220);
 
 pub struct FileManagerApp {
     pub state: crate::ui::state::AppState,
@@ -154,9 +152,10 @@ impl eframe::App for FileManagerApp {
         if self.first_frame {
             self.first_frame = false;
 
-            let mut style = (*ctx.style()).clone();
-            style.visuals.selection.stroke.color = ACCENT;
-            style.visuals.widgets.active.bg_fill = ACCENT;
+            let style = Style {
+                visuals: Visuals::dark(),
+                ..Default::default()
+            };
             ctx.set_style(style);
 
             ctx.request_repaint();
@@ -265,8 +264,7 @@ impl eframe::App for FileManagerApp {
             });
 
             ui.add_space(12.0);
-            let conn_btn = egui::Button::new("Connect")
-                .fill(ACCENT)
+                            let conn_btn = egui::Button::new("Connect")
                                 .min_size(egui::vec2(200.0, 32.0));
                             if ui.add(conn_btn).clicked() {
                                 self.state.connect_host = self.state.onboarding_host.clone();

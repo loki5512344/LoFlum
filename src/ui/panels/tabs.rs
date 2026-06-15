@@ -1,8 +1,6 @@
 use crate::domain::connection::ConnectionStatus;
 use crate::ui::state::AppState;
 
-const ACCENT: egui::Color32 = egui::Color32::from_rgb(100, 80, 220);
-
 pub fn render(ui: &mut egui::Ui, state: &mut AppState) {
     ui.horizontal(|ui| {
         let mut to_close: Option<usize> = None;
@@ -22,7 +20,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut AppState) {
             let mut tab_btn = egui::Button::new(&label)
                 .min_size(egui::vec2(60.0, 28.0));
             if is_active {
-                tab_btn = tab_btn.fill(ACCENT);
+                tab_btn = tab_btn.fill(egui::Color32::from_rgb(60, 60, 70));
             }
             if ui.add(tab_btn).clicked() {
                 state.active_tab = i;
