@@ -6,11 +6,12 @@ license = "GPL-3.0-only"
 
 [lib]
 name = "loflum_lib"
+path = "lib.rs"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]
 name = "loflum"
-path = "src/main.rs"
+path = "main.rs"
 
 [dependencies]
 eframe = { version = "0.28", features = ["default"] }
@@ -34,9 +35,3 @@ chrono = "0.4"
 futures-lite = "2"
 image = "0.25"
 
-[profile.release]
-opt-level = "z"
-lto = true
-codegen-units = 1
-strip = true
-panic = "abort"
