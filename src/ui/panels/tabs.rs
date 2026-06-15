@@ -1,16 +1,10 @@
 use crate::domain::connection::ConnectionStatus;
 use crate::ui::state::AppState;
 
+const ACCENT: egui::Color32 = egui::Color32::from_rgb(100, 80, 220);
+
 pub fn render(ui: &mut egui::Ui, state: &mut AppState) {
     ui.horizontal(|ui| {
-        if state.tabs.is_empty() {
-            ui.label("No connections");
-            if ui.button("+ New Connection").clicked() {
-                state.show_connect_dialog = true;
-            }
-            return;
-        }
-
         let mut to_close: Option<usize> = None;
 
         for (i, tab) in state.tabs.iter().enumerate() {
@@ -23,18 +17,18 @@ pub fn render(ui: &mut egui::Ui, state: &mut AppState) {
                 ConnectionStatus::Error(_) => "\u{2716}",
             };
 
-            let label = format!("{} {}", dot, tab.label);
+            let label = format!("{} {}  ", dot, tab.label);
 
-            let mut tab_button = egui::Button::new(&label);
+            let mut tab_btn = egui::Button::new(&label)
+                .min_size(egui::vec2(60.0, 28.0));
             if is_active {
-                tab_button = tab_button.fill(egui::Color32::from_rgb(60, 60, 80));
+                tab_btn = tab_btn.fill(ACCENT);
             }
-            let response = ui.add(tab_button);
-            if response.clicked() {
+            if ui.add(tab_btn).clicked() {
                 state.active_tab = i;
             }
 
-            if ui.small_button("\u{2715}").clicked() {
+            if ui.small_button("x").clicked() {
                 to_close = Some(i);
             }
         }
@@ -45,8 +39,6 @@ pub fn render(ui: &mut egui::Ui, state: &mut AppState) {
                 state.active_tab = state.tabs.len() - 1;
             }
         }
-
-        ui.separator();
 
         if ui.button("+").clicked() {
             state.show_connect_dialog = true;

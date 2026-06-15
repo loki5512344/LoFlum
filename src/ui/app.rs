@@ -15,6 +15,8 @@ use crate::ui::panels::status_bar;
 use crate::ui::panels::tabs;
 use crate::ui::panels::toolbar;
 
+const ACCENT: egui::Color32 = egui::Color32::from_rgb(100, 80, 220);
+
 pub struct FileManagerApp {
     pub state: crate::ui::state::AppState,
     pub registry: Arc<RemoteRegistry>,
@@ -84,6 +86,9 @@ impl FileManagerApp {
                         self.state.status_message = "Connected".into();
                         self.state.connect_loading = false;
                         self.state.show_connect_dialog = false;
+                        self.state.onboarding_host.clear();
+                        self.state.onboarding_user.clear();
+                        self.state.onboarding_pass.clear();
                     }
                     Err(e) => {
                         self.state.status_message = format!("Connection failed: {}", e);
@@ -147,6 +152,12 @@ impl eframe::App for FileManagerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if self.first_frame {
             self.first_frame = false;
+
+            let mut style = (*ctx.style()).clone();
+            style.visuals.selection.stroke.color = ACCENT;
+            style.visuals.widgets.active.bg_fill = ACCENT;
+            ctx.set_style(style);
+
             ctx.request_repaint();
         }
 
@@ -164,13 +175,7 @@ impl eframe::App for FileManagerApp {
         });
 
         TopBottomPanel::top("toolbar").show(ctx, |ui| {
-            toolbar::render(
-                ui,
-                &mut self.state,
-                &self.queue,
-                &self.registry,
-                self.rt.handle(),
-            );
+            toolbar::render(ui, &mut self.state);
         });
 
         let has_connection = self.state.active_tab_ref().is_some()
@@ -204,36 +209,83 @@ impl eframe::App for FileManagerApp {
             });
         } else {
             CentralPanel::default().show(ctx, |ui| {
+                let available = ui.available_height();
                 ui.vertical_centered(|ui| {
-                    ui.add_space(ui.available_height() * 0.3);
+                    ui.add_space(available * 0.15);
+
                     ui.heading("LoFlum");
                     ui.label("FTP/SFTP client");
-                    ui.add_space(20.0);
-                    if ui.button("New Connection").clicked() {
-                        self.state.show_connect_dialog = true;
-                    }
-                    if !self.state.tabs.is_empty() {
-                        ui.add_space(10.0);
-                        ui.label("Select a connection tab above or create a new one");
-                    }
+                    ui.add_space(24.0);
+
+                    let card_frame = egui::Frame::window(&ctx.style());
+                    card_frame.show(ui, |ui| {
+                        ui.set_min_width(320.0);
+                        ui.vertical_centered(|ui| {
+                            ui.label("Connect to a server");
+                            ui.add_space(12.0);
+
+                            ui.horizontal(|ui| {
+                                ui.label("Host:");
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut self.state.onboarding_host)
+                                        .id("onb_host".into())
+                                        .desired_width(200.0)
+                                        .hint_text("hostname"),
+                                );
+                            });
+
+                            ui.horizontal(|ui| {
+                                ui.label("User:");
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut self.state.onboarding_user)
+                                        .id("onb_user".into())
+                                        .desired_width(200.0)
+                                        .hint_text("username"),
+                                );
+                            });
+
+                            ui.horizontal(|ui| {
+                                ui.label("Pass:");
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut self.state.onboarding_pass)
+                                        .password(true)
+                                        .id("onb_pass".into())
+                                        .desired_width(200.0)
+                                        .hint_text("password"),
+                                );
+                            });
+
+                            ui.add_space(12.0);
+                            let conn_btn = egui::Button::new("Connect")
+                                .fill(ACCENT)
+                                .min_size(egui::vec2(200.0, 32.0));
+                            if ui.add(conn_btn).clicked() {
+                                self.state.connect_host = self.state.onboarding_host.clone();
+                                self.state.connect_user = self.state.onboarding_user.clone();
+                                self.state.connect_pass = self.state.onboarding_pass.clone();
+                                self.state.connect_port = "22".into();
+                                self.state.connect_protocol = 0;
+                                self.state.show_connect_dialog = true;
+                            }
+                        });
+                    });
                 });
             });
         }
 
-        let has_tasks = !self.state.queue_tasks.is_empty();
         let tasks = self.state.queue_tasks.clone();
-        if has_tasks || self.state.show_queue {
+        if self.state.show_queue || !tasks.is_empty() {
             TopBottomPanel::bottom("queue_panel")
                 .resizable(true)
-                .default_height(150.0)
-                .min_height(80.0)
+                .default_height(130.0)
+                .min_height(60.0)
                 .show(ctx, |ui| {
                     queue::render(ui, &mut self.state, &tasks);
                 });
         }
 
         TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
-            status_bar::render(ui, &self.state);
+            status_bar::render(ui, &mut self.state);
         });
 
         if self.state.show_connect_dialog {

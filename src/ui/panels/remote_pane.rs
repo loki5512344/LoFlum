@@ -193,8 +193,9 @@ pub fn trigger_list(
     let path = state.tabs[tab_idx].remote_path.clone();
     let registry = registry.clone();
 
-    let result: Arc<std::sync::Mutex<Option<Result<Vec<FileEntry>, String>>>> =
-        Arc::new(std::sync::Mutex::new(None));
+    let result = Arc::new(std::sync::Mutex::new(
+        None::<Result<Vec<FileEntry>, String>>,
+    ));
     let result_clone = result.clone();
 
     rt_handle.spawn(async move {
