@@ -5,3 +5,5 @@ pub mod remote_pane;
 pub mod status_bar;
 pub mod tabs;
 pub mod toolbar;
+pub mod transfer_area;
+pub mod tree;

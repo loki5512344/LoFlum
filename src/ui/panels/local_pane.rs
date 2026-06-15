@@ -35,31 +35,9 @@ pub fn render(
     registry: &Arc<RemoteRegistry>,
     _rt_handle: &tokio::runtime::Handle,
 ) {
-    ui.horizontal(|ui| {
-        ui.heading("\u{1F4C1} Local");
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.small_button("\u{1F5C4}").clicked() {
-                state.local_tree_open = !state.local_tree_open;
-            }
-        });
-    });
-
     let frame = egui::Frame::none().inner_margin(egui::Margin::symmetric(4.0, 2.0));
     let (_inner, dropped) = ui.dnd_drop_zone::<DragPayload, _>(frame, |ui| {
-        if state.local_tree_open {
-            ui.horizontal(|ui| {
-                ui.separator();
-                ui.vertical(|ui| {
-                    render_tree(ui, state);
-                });
-                ui.separator();
-                ui.vertical(|ui| {
-                    render_content(ui, state);
-                });
-            });
-        } else {
-            render_content(ui, state);
-        }
+        render_content(ui, state);
     });
 
     if let Some(payload_arc) = dropped {
@@ -90,44 +68,9 @@ pub fn render(
     }
 }
 
-fn render_tree(ui: &mut egui::Ui, state: &mut AppState) {
-    let home = dirs::home_dir()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .to_string();
-
-    egui::ScrollArea::vertical()
-        .auto_shrink([false; 2])
-        .min_scrolled_width(120.0)
-        .show(ui, |ui| {
-            ui.strong("Folders");
-            ui.separator();
-
-            let roots = [
-                ("/", "Root"),
-                (&home, "Home"),
-                ("/tmp", "tmp"),
-                ("/var", "var"),
-                ("/etc", "etc"),
-            ];
-
-            for (root_path, label) in &roots {
-                let is_current = state.local_path == *root_path
-                    || state.local_path.starts_with(root_path);
-                let mut btn = egui::Button::new(*label).min_size(egui::vec2(120.0, 20.0));
-                if is_current {
-                    btn = btn.fill(egui::Color32::from_rgb(50, 60, 80));
-                }
-                if ui.add(btn).clicked() {
-                    state.local_path = root_path.to_string();
-                    refresh_local(state);
-                }
-            }
-        });
-}
-
 fn render_content(ui: &mut egui::Ui, state: &mut AppState) {
     ui.horizontal(|ui| {
+        ui.label("\u{1F4C1}");
         let mut path = state.local_path.clone();
         ui.add(
             TextEdit::singleline(&mut path)
@@ -174,6 +117,19 @@ fn render_content(ui: &mut egui::Ui, state: &mut AppState) {
     ui.separator();
     ui.horizontal(|ui| {
         ui.label(format!("{} items", state.local_entries.len()));
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if ui.small_button("\u{2B50}").clicked() {
+                let name = std::path::Path::new(&state.local_path)
+                    .file_name()
+                    .map(|s| s.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "Bookmark".into());
+                state.bookmarks.push(crate::ui::state::Bookmark {
+                    name,
+                    path: state.local_path.clone(),
+                });
+                state.status_message = "Bookmark added".into();
+            }
+        });
     });
 }
 

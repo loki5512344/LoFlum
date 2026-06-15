@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use egui::{CentralPanel, Style, TopBottomPanel, Visuals};
+use egui::{CentralPanel, SidePanel, Style, TopBottomPanel, Visuals};
 
 use crate::domain::connection::ConnectionStatus;
 use crate::domain::file_entry::{EntryKind, FileEntry};
@@ -14,6 +14,8 @@ use crate::ui::panels::remote_pane;
 use crate::ui::panels::status_bar;
 use crate::ui::panels::tabs;
 use crate::ui::panels::toolbar;
+use crate::ui::panels::tree;
+use crate::ui::panels::transfer_area;
 
 pub struct FileManagerApp {
     pub state: crate::ui::state::AppState,
@@ -72,7 +74,7 @@ impl FileManagerApp {
                         let tab = crate::ui::state::ConnectionTab {
                             id: params.id.clone(),
                             label: params.label.clone(),
-                            params,
+                            params: params.clone(),
                             status: ConnectionStatus::Connected,
                             remote_path: path,
                             remote_entries: list,
@@ -84,10 +86,7 @@ impl FileManagerApp {
                         self.state.status_message = "Connected".into();
                         self.state.connect_loading = false;
                         self.state.show_connect_dialog = false;
-                        self.state.onboarding_host.clear();
-                        self.state.onboarding_user.clear();
-                        self.state.onboarding_pass.clear();
-                        self.state.onboarding_port.clear();
+                        self.state.add_history(&params.host, params.port, &params.username);
                     }
                     Err(e) => {
                         self.state.status_message = format!("Connection failed: {}", e);
@@ -151,13 +150,11 @@ impl eframe::App for FileManagerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if self.first_frame {
             self.first_frame = false;
-
             let style = Style {
                 visuals: Visuals::dark(),
                 ..Default::default()
             };
             ctx.set_style(style);
-
             ctx.request_repaint();
         }
 
@@ -170,13 +167,20 @@ impl eframe::App for FileManagerApp {
             .filter(|t| t.status == ConnectionStatus::Connected)
             .count();
 
+        TopBottomPanel::top("toolbar").show(ctx, |ui| {
+            toolbar::render(ui, &mut self.state);
+        });
+
         TopBottomPanel::top("tabs").show(ctx, |ui| {
             tabs::render(ui, &mut self.state);
         });
 
-        TopBottomPanel::top("toolbar").show(ctx, |ui| {
-            toolbar::render(ui, &mut self.state);
-        });
+        SidePanel::left("tree_panel")
+            .resizable(true)
+            .min_width(180.0)
+            .show(ctx, |ui| {
+                tree::render(ui, &mut self.state);
+            });
 
         let has_connection = self.state.active_tab_ref().is_some()
             && self.state.active_tab_ref().unwrap().status == ConnectionStatus::Connected;
@@ -209,78 +213,13 @@ impl eframe::App for FileManagerApp {
             });
         } else {
             CentralPanel::default().show(ctx, |ui| {
-                let available = ui.available_height();
-                ui.vertical_centered(|ui| {
-                    ui.add_space(available * 0.15);
-
-                    ui.heading("LoFlum");
-                    ui.label("FTP/SFTP client");
-                    ui.add_space(24.0);
-
-                    let card_frame = egui::Frame::window(&ctx.style());
-                    card_frame.show(ui, |ui| {
-                        ui.set_min_width(320.0);
-                        ui.vertical_centered(|ui| {
-                            ui.label("Connect to a server");
-                            ui.add_space(12.0);
-
-            ui.horizontal(|ui| {
-                ui.label("Host:");
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.state.onboarding_host)
-                        .id("onb_host".into())
-                        .desired_width(150.0)
-                        .hint_text("hostname"),
+                local_pane::render(
+                    ui,
+                    &mut self.state,
+                    &self.queue,
+                    &self.registry,
+                    self.rt.handle(),
                 );
-                ui.label("Port:");
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.state.onboarding_port)
-                        .id("onb_port".into())
-                        .desired_width(60.0)
-                        .char_limit(5)
-                        .hint_text("port"),
-                );
-            });
-
-            ui.horizontal(|ui| {
-                ui.label("User:");
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.state.onboarding_user)
-                        .id("onb_user".into())
-                        .desired_width(200.0)
-                        .hint_text("username"),
-                );
-            });
-
-            ui.horizontal(|ui| {
-                ui.label("Pass:");
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.state.onboarding_pass)
-                        .password(true)
-                        .id("onb_pass".into())
-                        .desired_width(200.0)
-                        .hint_text("password"),
-                );
-            });
-
-            ui.add_space(12.0);
-                            let conn_btn = egui::Button::new("Connect")
-                                .min_size(egui::vec2(200.0, 32.0));
-                            if ui.add(conn_btn).clicked() {
-                                self.state.connect_host = self.state.onboarding_host.clone();
-                                self.state.connect_user = self.state.onboarding_user.clone();
-                                self.state.connect_pass = self.state.onboarding_pass.clone();
-                                self.state.connect_port = if self.state.onboarding_port.is_empty() {
-                                    "22".into()
-                                } else {
-                                    self.state.onboarding_port.clone()
-                                };
-                                self.state.connect_protocol = 0;
-                                self.state.show_connect_dialog = true;
-                            }
-                        });
-                    });
-                });
             });
         }
 
@@ -294,6 +233,13 @@ impl eframe::App for FileManagerApp {
                     queue::render(ui, &mut self.state, &tasks);
                 });
         }
+
+        TopBottomPanel::bottom("transfer_area")
+            .default_height(40.0)
+            .min_height(30.0)
+            .show(ctx, |ui| {
+                transfer_area::render(ui, &mut self.state);
+            });
 
         TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
             status_bar::render(ui, &mut self.state);
