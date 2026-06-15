@@ -1,6 +1,6 @@
+use crate::domain::transfer::{TaskState, TransferTask};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
-use crate::domain::transfer::{TransferTask, TaskState};
 
 #[derive(Clone, Default)]
 pub struct TransferQueue {
@@ -32,10 +32,8 @@ impl TransferQueue {
         if let Some(t) = q.iter_mut().find(|t| t.id == id) {
             t.transferred_bytes = transferred;
             t.speed = Some(speed);
-            if speed > 0 {
-                let remaining = t.total_bytes.saturating_sub(transferred);
-                t.eta_secs = Some(remaining / speed);
-            }
+            let remaining = t.total_bytes.saturating_sub(transferred);
+            t.eta_secs = remaining.checked_div(speed);
         }
     }
 

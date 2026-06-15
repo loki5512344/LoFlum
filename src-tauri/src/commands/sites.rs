@@ -1,6 +1,6 @@
-use tauri::State;
 use crate::domain::site::Site;
 use crate::storage::db::Db;
+use tauri::State;
 
 #[tauri::command]
 pub fn get_sites(db: State<'_, Db>) -> Result<Vec<Site>, String> {

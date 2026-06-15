@@ -1,21 +1,11 @@
+use crate::domain::connection::Protocol;
+use crate::domain::site::Site;
 use anyhow::Result;
 use rusqlite::{Connection, params};
-use tauri::{AppHandle, Manager};
-use std::sync::Mutex;
-use crate::domain::site::Site;
-use crate::domain::connection::Protocol;
 
-pub struct Db(pub Mutex<Connection>);
-
-pub fn init(app: &AppHandle) -> Result<()> {
-    let path = app.path().app_data_dir()
-        .expect("no app data dir")
-        .join("loflum.db");
-
-    std::fs::create_dir_all(path.parent().unwrap())?;
-    let conn = Connection::open(&path)?;
-
-    conn.execute_batch("
+pub fn init_tables(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        "
         PRAGMA journal_mode=WAL;
 
         CREATE TABLE IF NOT EXISTS sites (
@@ -29,35 +19,37 @@ pub fn init(app: &AppHandle) -> Result<()> {
             folder      TEXT,
             note        TEXT
         );
-    ")?;
-
-    app.manage(Db(Mutex::new(conn)));
+    ",
+    )?;
     Ok(())
 }
 
 pub fn get_sites(conn: &Connection) -> Result<Vec<Site>> {
     let mut stmt = conn.prepare(
-        "SELECT id, name, protocol, host, port, username, key_path, folder, note FROM sites ORDER BY name"
+        "SELECT id, name, protocol, host, port, username, key_path, folder, note FROM sites ORDER BY name",
     )?;
-    let sites = stmt.query_map([], |row| {
-        let proto_str: String = row.get(2)?;
-        let protocol = match proto_str.as_str() {
-            "sftp" => Protocol::Sftp,
-            "ftps" => Protocol::Ftps,
-            _ => Protocol::Ftp,
-        };
-        Ok(Site {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            protocol,
-            host: row.get(3)?,
-            port: row.get(4)?,
-            username: row.get(5)?,
-            key_path: row.get(6)?,
-            folder: row.get(7)?,
-            note: row.get(8)?,
-        })
-    })?.filter_map(|r| r.ok()).collect();
+    let sites = stmt
+        .query_map([], |row| {
+            let proto_str: String = row.get(2)?;
+            let protocol = match proto_str.as_str() {
+                "sftp" => Protocol::Sftp,
+                "ftps" => Protocol::Ftps,
+                _ => Protocol::Ftp,
+            };
+            Ok(Site {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                protocol,
+                host: row.get(3)?,
+                port: row.get(4)?,
+                username: row.get(5)?,
+                key_path: row.get(6)?,
+                folder: row.get(7)?,
+                note: row.get(8)?,
+            })
+        })?
+        .filter_map(|r| r.ok())
+        .collect();
     Ok(sites)
 }
 
@@ -72,8 +64,15 @@ pub fn save_site(conn: &Connection, site: &Site) -> Result<()> {
          (id, name, protocol, host, port, username, key_path, folder, note)
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
         params![
-            site.id, site.name, proto, site.host, site.port,
-            site.username, site.key_path, site.folder, site.note
+            site.id,
+            site.name,
+            proto,
+            site.host,
+            site.port,
+            site.username,
+            site.key_path,
+            site.folder,
+            site.note
         ],
     )?;
     Ok(())

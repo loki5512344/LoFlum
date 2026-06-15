@@ -1,9 +1,9 @@
 pub mod ftp;
 pub mod sftp;
 
-use async_trait::async_trait;
 use crate::domain::file_entry::FileEntry;
 use anyhow::Result;
+use async_trait::async_trait;
 
 /// Единый контракт для всех протоколов.
 /// Очередь передач не знает — FTP это или SFTP.

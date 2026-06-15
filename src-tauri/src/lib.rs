@@ -1,47 +1,52 @@
-pub mod commands;
 pub mod domain;
 pub mod fs;
 pub mod protocols;
 pub mod storage;
 pub mod transfer;
+pub mod ui;
 
+use crate::fs::remote::RemoteRegistry;
+use crate::transfer::queue::TransferQueue;
+use crate::ui::app::FileManagerApp;
 use std::sync::Arc;
-use tauri::Manager;
-use crate::transfer::manager::TransferManager;
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt().with_target(false).init();
 
-    tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![
-            commands::fs::list_local,
-            commands::fs::list_remote,
-            commands::fs::remote_mkdir,
-            commands::fs::remote_rename,
-            commands::fs::remote_delete,
-            commands::connection::connect,
-            commands::connection::disconnect,
-            commands::transfer::upload,
-            commands::transfer::download,
-            commands::transfer::get_queue,
-            commands::transfer::pause_task,
-            commands::transfer::cancel_task,
-            commands::sites::get_sites,
-            commands::sites::save_site,
-            commands::sites::delete_site,
-        ])
-        .setup(|app| {
-            let registry = Arc::new(crate::fs::remote::RemoteRegistry::default());
-            let manager = TransferManager::new(registry.clone(), app.handle().clone());
+    let db_path = dirs::data_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("loflum")
+        .join("loflum.db");
+    if let Some(parent) = db_path.parent() {
+        std::fs::create_dir_all(parent).ok();
+    }
+    let conn = rusqlite::Connection::open(&db_path).expect("failed to open loflum database");
+    storage::db::init_tables(&conn).expect("failed to init db tables");
+    let db = Arc::new(std::sync::Mutex::new(conn));
 
-            app.manage(registry);
-            app.manage(manager);
+    let sites = {
+        let c = db.lock().unwrap();
+        storage::db::get_sites(&c).unwrap_or_default()
+    };
 
-            storage::db::init(app.handle())?;
-            Ok(())
-        })
-        .run(tauri::generate_context!())
-        .expect("error while running loflum");
+    let rt = tokio::runtime::Runtime::new().expect("failed to create tokio runtime");
+    let rt_handle = rt.handle().clone();
+
+    let registry = Arc::new(RemoteRegistry::default());
+    let queue = TransferQueue::default();
+
+    transfer::worker::spawn_worker(queue.clone(), registry.clone(), rt_handle);
+
+    let app = FileManagerApp::new(registry, queue, rt, db, sites);
+
+    let native_options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_title("LoFlum")
+            .with_inner_size([1280.0, 800.0])
+            .with_min_inner_size([900.0, 600.0]),
+        ..Default::default()
+    };
+
+    eframe::run_native("LoFlum", native_options, Box::new(|_cc| Ok(Box::new(app))))
+        .expect("failed to start LoFlum");
 }

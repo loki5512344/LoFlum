@@ -1,32 +1,21 @@
-use std::sync::Arc;
-use tauri::AppHandle;
-use crate::transfer::queue::TransferQueue;
-use crate::transfer::worker::spawn_worker;
 use crate::fs::remote::RemoteRegistry;
+use crate::transfer::queue::TransferQueue;
+use std::sync::Arc;
 
-/// Хранит очередь передач и запускает воркер.
 pub struct TransferManager {
     pub queue: TransferQueue,
-    registry: Arc<RemoteRegistry>,
-    app: AppHandle,
+    pub registry: Arc<RemoteRegistry>,
 }
 
 impl TransferManager {
-    pub fn new(registry: Arc<RemoteRegistry>, app: AppHandle) -> Arc<Self> {
-        let manager = Arc::new(Self {
+    pub fn new(registry: Arc<RemoteRegistry>) -> Arc<Self> {
+        Arc::new(Self {
             queue: TransferQueue::default(),
-            registry: registry.clone(),
-            app: app.clone(),
-        });
-        spawn_worker(manager.clone(), registry, app);
-        manager
+            registry,
+        })
     }
 
     pub fn registry(&self) -> &RemoteRegistry {
         &self.registry
-    }
-
-    pub fn app(&self) -> &AppHandle {
-        &self.app
     }
 }

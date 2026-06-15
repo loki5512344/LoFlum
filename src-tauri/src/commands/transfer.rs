@@ -1,9 +1,9 @@
-use tauri::State;
 use std::sync::Arc;
+use tauri::State;
 
-use crate::domain::transfer::{TransferTask, TransferKind, TaskState};
-use crate::transfer::manager::TransferManager;
 use crate::domain::file_entry::EntryKind;
+use crate::domain::transfer::{TaskState, TransferKind, TransferTask};
+use crate::transfer::manager::TransferManager;
 
 #[tauri::command]
 pub async fn upload(
@@ -12,7 +12,8 @@ pub async fn upload(
     local_path: String,
     remote_path: String,
 ) -> Result<String, String> {
-    let meta = std::fs::metadata(&local_path).map_err(|e| format!("cannot stat local file: {}", e))?;
+    let meta =
+        std::fs::metadata(&local_path).map_err(|e| format!("cannot stat local file: {}", e))?;
     if !meta.is_file() {
         return Err("local path is not a file".into());
     }
@@ -50,9 +51,13 @@ pub async fn download(
 ) -> Result<String, String> {
     // Узнаём размер удалённого файла через stat
     let registry = manager.registry();
-    let fs = registry.get(&connection_id)
+    let fs = registry
+        .get(&connection_id)
         .ok_or_else(|| format!("no connection: {}", connection_id))?;
-    let stat = fs.stat(&remote_path).await.map_err(|e| format!("stat failed: {}", e))?;
+    let stat = fs
+        .stat(&remote_path)
+        .await
+        .map_err(|e| format!("stat failed: {}", e))?;
 
     let file_name = std::path::Path::new(&remote_path)
         .file_name()

@@ -1,9 +1,9 @@
 // Абстракция над RemoteFs для хранения активных соединений
 // TODO: HashMap<connection_id, Arc<dyn RemoteFs>>
 
+use crate::protocols::RemoteFs;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use crate::protocols::RemoteFs;
 
 #[derive(Default)]
 pub struct RemoteRegistry {

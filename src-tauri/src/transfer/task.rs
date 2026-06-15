@@ -1,4 +1,4 @@
-use crate::domain::transfer::{TransferTask, TransferKind};
+use crate::domain::transfer::{TransferKind, TransferTask};
 
 pub fn new_task(
     kind: TransferKind,
